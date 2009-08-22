@@ -1,16 +1,16 @@
 import Control.Concurrent
+import qualified Control.Exception as E
 import Control.Monad.State
+import Data.Either
 import System.Environment
 import System.IO
 
-data CurrentInput = CurrentInput { currentInput :: [String] }
-                 deriving (Show)
-
+type CurrentInput = [String]
 type ReadState = StateT CurrentInput IO (String)
 
 data ReadHandleParams =
     ReadHandleParams { lineMVar :: MVar (Int, String)
-                     , endMVar :: MVar Bool
+                     , endMVar :: MVar E.IOException
                      , handleId :: Int
                      , handle :: Handle
                      }
@@ -24,22 +24,29 @@ updateLine which line = do
   state <- get
   let newInput = map
                  ( \(i,x) -> if i == which then line else x )
-                 (zip [0..] (currentInput state))
-  put $ CurrentInput { currentInput = newInput }
+                 (zip [0..] state)
+  put newInput
   return (merge newInput)
 
 printCurrentState :: ReadState
 printCurrentState = do
   state <- get
-  let line = merge (currentInput state)
+  let line = merge state
   (lift.putStrLn) line
   return line
 
 readHandle :: ReadHandleParams -> IO ()
 readHandle params = do
-  line <- hGetLine (handle params)
-  putMVar (lineMVar params) (handleId params, line)
-  readHandle params
+  let h = handle params
+      i = handleId params
+      l = lineMVar params
+      e = endMVar params
+  maybeLine <- E.try (hGetLine h)
+  case maybeLine of
+    Left x     -> putMVar e x
+    Right line -> do
+                   putMVar l (i, line)
+                   readHandle params
 
 mainLoop :: MVar (Int, String) -> ReadState
 mainLoop lineMVar = do
@@ -50,7 +57,7 @@ mainLoop lineMVar = do
 
 startMainLoop :: MVar (Int, String) -> [String] -> IO ()
 startMainLoop m i = do
-  (state, result) <- runStateT (mainLoop m) (CurrentInput { currentInput = i })
+  (state, result) <- runStateT (mainLoop m) i
   return ()
 
 openPipe :: String -> IO Handle
@@ -62,25 +69,24 @@ main = do
   end <- newEmptyMVar
   line <- newEmptyMVar
 
-  let startHandleReader :: Int -> Handle -> IO ()
-      startHandleReader id handle = do
-         forkIO $ readHandle
-                ReadHandleParams { lineMVar = line
-                                 , endMVar = end
-                                 , handleId = id
-                                 , handle = handle
-                                 }
-         return ()
+  let startHandleReader :: Int -> Handle -> IO ThreadId
+      startHandleReader id handle =
+          forkIO $ (readHandle ReadHandleParams { lineMVar = line
+                                               , endMVar = end
+                                               , handleId = id
+                                               , handle = handle
+                                               })
 
   -- open all the pipes we need
   pipes <- mapM openPipe args
 
   -- start consolidator
-  forkIO $ startMainLoop line (replicate (1 + length pipes) "")
+  mainLoopId <- forkIO $ startMainLoop line (replicate (1 + length pipes) "")
 
   -- start reading from stdin and all pipes
-  startHandleReader 0 stdin
-  forM (zip [1..] pipes) ( \(i,h) -> startHandleReader i h )
+  stdinId <- startHandleReader 0 stdin
+  readerIds <- forM (zip [1..] pipes) ( uncurry startHandleReader )
 
   takeMVar end
+  mapM killThread (mainLoopId : stdinId : readerIds )
   return ()

@@ -46,7 +46,7 @@ readHandle params = do
     (do line <- hGetLine h
         putMVar l (i, line)
         readHandle params )
-    (\x -> do putStrLn $ "Error on handle #" ++ (show i) ++": " ++ (show x)
+    (\x -> do hPutStrLn stderr $ "Error on handle #" ++ (show i) ++": " ++ (show x)
               putMVar e x)
 
 mainLoop :: MVar (Int, String) -> ReadState
@@ -90,4 +90,5 @@ main = do
 
   takeMVar end
   mapM killThread (mainLoopId : stdinId : readerIds )
+  hPutStrLn stderr "Exiting cleanly."
   return ()

@@ -41,12 +41,13 @@ readHandle params = do
       i = handleId params
       l = lineMVar params
       e = endMVar params
-  maybeLine <- E.try (hGetLine h)
-  case maybeLine of
-    Left x     -> putMVar e x
-    Right line -> do
-                   putMVar l (i, line)
-                   readHandle params
+  catch -- using ugly catch because "try" causes inconsistent type
+        -- inference depending on whether i am using runghc or ghc!
+    (do line <- hGetLine h
+        putMVar l (i, line)
+        readHandle params )
+    (\x -> do putStrLn $ "Error on handle #" ++ (show i) ++": " ++ (show x)
+              putMVar e x)
 
 mainLoop :: MVar (Int, String) -> ReadState
 mainLoop lineMVar = do

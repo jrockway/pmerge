@@ -1,6 +1,7 @@
-import System.IO
-import Control.Monad.State
 import Control.Concurrent
+import Control.Monad.State
+import System.Environment
+import System.IO
 
 data CurrentInput = CurrentInput { currentInput :: [String] }
                  deriving (Show)
@@ -16,7 +17,7 @@ data ReadHandleParams =
 
 
 merge :: [String] -> String
-merge (master:rest) = master ++ (rest !! 0) -- XXX
+merge xs = show (xs >>= (\x -> [":", x]))
 
 updateLine :: Int -> String -> ReadState
 updateLine which line = do
@@ -36,7 +37,7 @@ printCurrentState = do
 
 readHandle :: ReadHandleParams -> IO ()
 readHandle params = do
-  line <- hGetLine(handle params)
+  line <- hGetLine (handle params)
   putMVar (lineMVar params) (handleId params, line)
   readHandle params
 
@@ -52,22 +53,34 @@ startMainLoop m i = do
   (state, result) <- runStateT (mainLoop m) (CurrentInput { currentInput = i })
   return ()
 
+openPipe :: String -> IO Handle
+openPipe f = openFile f ReadMode
+
 main :: IO ()
 main = do
+  args <- getArgs
   end <- newEmptyMVar
   line <- newEmptyMVar
-  pipe <- openFile "test.fifo" ReadMode
-  forkIO (startMainLoop line ["",""])
-  forkIO (readHandle ReadHandleParams { lineMVar = line
-                                      , endMVar = end
-                                      , handleId = 0
-                                      , handle = stdin
-                                      })
 
-  forkIO (readHandle ReadHandleParams { lineMVar = line
-                                      , endMVar = end
-                                      , handleId = 1
-                                      , handle = pipe
-                                      })
+  let startHandleReader :: Int -> Handle -> IO ()
+      startHandleReader id handle = do
+         forkIO $ readHandle
+                ReadHandleParams { lineMVar = line
+                                 , endMVar = end
+                                 , handleId = id
+                                 , handle = handle
+                                 }
+         return ()
+
+  -- open all the pipes we need
+  pipes <- mapM openPipe args
+
+  -- start consolidator
+  forkIO $ startMainLoop line (replicate (1 + length pipes) "")
+
+  -- start reading from stdin and all pipes
+  startHandleReader 0 stdin
+  forM (zip [1..] pipes) ( \(i,h) -> startHandleReader i h )
+
   takeMVar end
   return ()

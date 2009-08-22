@@ -9,5 +9,5 @@ Build-Type:    Simple
 Cabal-Version: >= 1.2
 Executable pmerge
   Main-is: pmerge.hs
-  Build-Depends: base, unix
+  Build-Depends: base, unix, mtl
   ghc-options:   -O

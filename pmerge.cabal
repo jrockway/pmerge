@@ -1,6 +1,6 @@
-Name:          Pmerge
+Name:          PMerge
 Version:       0.1
-Description:   Merge a pipe with stdin
+Description:   Merge pipes with stdin
 License:       BSD4
 License-file:  LICENSE
 Author:        Jonathan Rockway
@@ -9,5 +9,6 @@ Build-Type:    Simple
 Cabal-Version: >= 1.2
 Executable pmerge
   Main-is: pmerge.hs
-  Build-Depends: base, unix, mtl
+  Other-Modules: PMerge.Merge
+  Build-Depends: base, unix, mtl, MissingH
   ghc-options:   -O

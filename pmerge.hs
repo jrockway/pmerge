@@ -5,6 +5,8 @@ import Data.Either
 import System.Environment
 import System.IO
 
+import PMerge.Merge (merge)
+
 type CurrentInput = [String]
 type ReadState = StateT CurrentInput IO (String)
 
@@ -14,10 +16,6 @@ data ReadHandleParams =
                      , handleId :: Int
                      , handle :: Handle
                      }
-
-
-merge :: [String] -> String
-merge xs = show (xs >>= (\x -> [":", x]))
 
 updateLine :: Int -> String -> ReadState
 updateLine which line = do

@@ -59,8 +59,9 @@ startMainLoop m i = do
   (state, result) <- runStateT (mainLoop m) i
   return ()
 
-openPipe :: String -> IO Handle
-openPipe f = openFile f ReadMode
+-- we open for writing so that we will always block
+openPipe :: String -> IO (Handle,Handle)
+openPipe f = liftM2 (,) (openFile f ReadMode) (openFile f WriteMode)
 
 main :: IO ()
 main = do
@@ -77,7 +78,8 @@ main = do
                                                })
 
   -- open all the pipes we need
-  pipes <- mapM openPipe args
+  readWritePipes <- mapM openPipe args
+  let pipes = map fst readWritePipes
 
   -- start consolidator
   mainLoopId <- forkIO $ startMainLoop line (replicate (1 + length pipes) "")
@@ -88,5 +90,9 @@ main = do
 
   takeMVar end
   mapM killThread (mainLoopId : stdinId : readerIds )
+  mapM hClose (extract readWritePipes)
   hPutStrLn stderr "Exiting cleanly."
   return ()
+
+extract :: [(a,a)] -> [a]
+extract xs = xs >>= \x -> [fst x, snd x]

@@ -82,6 +82,8 @@ main = do
   let pipes = map fst readWritePipes
 
   -- start consolidator
+  hSetBuffering stdout LineBuffering
+  hSetBuffering stdin LineBuffering
   mainLoopId <- forkIO $ startMainLoop line (replicate (1 + length pipes) "")
 
   -- start reading from stdin and all pipes

@@ -1,0 +1,13 @@
+Name:          Pmerge
+Version:       0.1
+Description:   Merge a pipe with stdin
+License:       BSD4
+License-file:  LICENSE
+Author:        Jonathan Rockway
+Maintainer:    jon@jrock.us
+Build-Type:    Simple
+Cabal-Version: >= 1.2
+Executable pmerge
+  Main-is: pmerge.hs
+  Build-Depends: base, unix
+  ghc-options:   -O

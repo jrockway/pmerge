@@ -1,18 +1,17 @@
 import Control.Concurrent
-import qualified Control.Exception as E
+import Control.Exception (IOException)
 import Control.Monad.State
-import Data.Either
 import System.Environment
 import System.IO
 
 import PMerge.Merge (merge)
 
 type CurrentInput = [String]
-type ReadState = StateT CurrentInput IO (String)
+type ReadState = StateT CurrentInput IO ()
 
 data ReadHandleParams =
     ReadHandleParams { lineMVar :: MVar (Int, String)
-                     , endMVar :: MVar E.IOException
+                     , endMVar :: MVar IOException
                      , handleId :: Int
                      , handle :: Handle
                      }
@@ -24,14 +23,13 @@ updateLine which line = do
                  ( \(i,x) -> if i == which then line else x )
                  (zip [0..] state)
   put newInput
-  return (merge newInput)
+  return ()
 
 printCurrentState :: ReadState
 printCurrentState = do
   state <- get
-  let line = merge state
-  (lift.putStrLn) line
-  return line
+  (liftIO . putStrLn) $ merge state
+  return ()
 
 readHandle :: ReadHandleParams -> IO ()
 readHandle params = do
@@ -49,7 +47,7 @@ readHandle params = do
 
 mainLoop :: MVar (Int, String) -> ReadState
 mainLoop lineMVar = do
-   (handle, line) <- (lift . takeMVar) lineMVar
+   (handle, line) <- (liftIO . takeMVar) lineMVar
    updateLine handle line
    printCurrentState
    mainLoop lineMVar
@@ -72,10 +70,10 @@ main = do
   let startHandleReader :: Int -> Handle -> IO ThreadId
       startHandleReader id handle =
           forkIO $ (readHandle ReadHandleParams { lineMVar = line
-                                               , endMVar = end
-                                               , handleId = id
-                                               , handle = handle
-                                               })
+                                                , endMVar = end
+                                                , handleId = id
+                                                , handle = handle
+                                                })
 
   -- open all the pipes we need
   readWritePipes <- mapM openPipe args

@@ -14,11 +14,15 @@ When you type the first line into STDIN, pmerge echoes it back to you:
     > Hello, world!
     Hello, world!
 
+(A note about the examples; `>` represents input on pmerge's STDIN,
+`$` represents shell commands, and anything else represents the output
+of pmerge on STDOUT.)
+
 When a.fifo becomes readable and an entire line is consumed, pmerge
 merges the data from STDIN with the new data from a.fifo (and any
 existing data on b.fifo):
 
-    > echo "This is A" > a.fifo
+    $ echo "This is A" > a.fifo
     Hello, world.
 
 Since the "merge specification" is read from STDIN, no merge is
@@ -31,17 +35,19 @@ the merge is actually performed:
 
 Now when we write to a.fifo again:
 
-    > echo "This is new data on A" > a.fifo
+    $ echo "This is new data on A" > a.fifo
     This will merge A into here -> "This is new data on A"
 
 We can change the spec to include b.fifo, and watch the result change:
 
     > A: [_1], B: [_2]
     A: "This is new data on A", B:
-    > echo "A" > a.fifo
+    $ echo "A" > a.fifo
     A: A, B:
-    > echo "B" > b.fifo
+    $ echo "B" > b.fifo
     A: A, B: B
+    > B: [_2], A: [_1]
+    B: B, A: A
 
 So basically, whenever any new data or format information arrives,
 pmerge immediately merges that data and prints the result.  This is

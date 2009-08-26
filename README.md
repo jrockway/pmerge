@@ -12,7 +12,7 @@ merge these streams, invoke pmerge like:
 When you type the first line into STDIN, pmerge echoes it back to you:
 
     > Hello, world!
-    Hello, world!
+     Hello, world!
 
 (A note about the examples; `>` represents input on pmerge's STDIN,
 `$` represents shell commands, and anything else represents the output
@@ -23,15 +23,17 @@ merges the data from STDIN with the new data from a.fifo (and any
 existing data on b.fifo):
 
     $ echo "This is A" > a.fifo
-    Hello, world.
+     Hello, world.
 
-Since the "merge specification" is read from STDIN, no merge is
-performed, and what was in STDIN before is printed again.  If we
-change the data in STDIN's "buffer" to something with a merge spec,
-the merge is actually performed:
+Right now, this is a "no op", since the "merge specification" is read
+from STDIN, and the data on STDIN didn't specify anything to merge
+(with `[_#]` margers).  So in this case, whatever was in STDIN's
+"buffer" before is printed again.  If we change the data in STDIN's
+buffer to something with a merge spec, the merge is actually
+performed:
 
     > This will merge A into here -> "[_1]"
-    This will merge A into here -> "This is A"
+     This will merge A into here -> "This is A"
 
 Now when we write to a.fifo again:
 
@@ -41,13 +43,13 @@ Now when we write to a.fifo again:
 We can change the spec to include b.fifo, and watch the result change:
 
     > A: [_1], B: [_2]
-    A: "This is new data on A", B:
+     A: This is new data on A, B:
     $ echo "A" > a.fifo
-    A: A, B:
+     A: A, B:
     $ echo "B" > b.fifo
-    A: A, B: B
+     A: A, B: B
     > B: [_2], A: [_1]
-    B: B, A: A
+     B: B, A: A
 
 So basically, whenever any new data or format information arrives,
 pmerge immediately merges that data and prints the result.  This is

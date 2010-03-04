@@ -1,7 +1,7 @@
 Name:          PMerge
 Version:       0.1
 Description:   Merge pipes with stdin
-License:       BSD4
+License:       BSD3
 License-file:  LICENSE
 Author:        Jonathan Rockway
 Maintainer:    jon@jrock.us
@@ -10,5 +10,4 @@ Cabal-Version: >= 1.2
 Executable pmerge
   Main-is: pmerge.hs
   Other-Modules: PMerge.Merge
-  Build-Depends: base, unix, mtl, MissingH
-  ghc-options:   -O
+  Build-Depends: base >= 4 && < 5, unix, mtl, MissingH
